@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <title>Generator Etykiet QR (Druk / PDF)</title>
+    <!-- Dołączenie bibliotek QRCode.js oraz html2pdf.js z CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+        @page {
+            size: A4;
+            margin: 0;
+        }
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            color: #000;
+            background-color: #f0f2f5;
+        }
+
+        /* Panel sterowania (widoczny tylko na ekranie, znika przy drukowaniu) */
+        .control-panel {
+            background: #fff;
+            padding: 20px;
+            max-width: 800px;
+            margin: 20px auto;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        .control-panel h2 {
+            margin-top: 0;
+            font-size: 18px;
+            color: #333;
+        }
+        .label-input-group {
+            border: 1px solid #ddd;
+            padding: 12px;
+            margin-bottom: 12px;
+            border-radius: 6px;
+            background: #fafafa;
+            position: relative;
+        }
+        .label-input-group h3 {
+            margin: 0 0 8px 0;
+            font-size: 14px;
+            color: #555;
+            display: inline-block;
+        }
+        .checkbox-container {
+            font-size: 12px;
+            margin-bottom: 8px;
+            color: #444;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .remove-btn {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 4px 8px;
+            font-size: 11px;
+            border-radius: 4px;
+            cursor: pointer;
+            float: right;
+        }
+        .remove-btn:hover {
+            background: #c82333;
+        }
+        .input-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 8px;
+            clear: both;
+        }
+        .input-row select,
+        .input-row input {
+            flex: 1;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 13px;
+            background: #fff;
+        }
+        .actions-row {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .add-btn {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            font-size: 14px;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            flex: 1;
+            transition: background 0.2s;
+        }
+        .add-btn:hover {
+            background: #0056b3;
+        }
+        .pdf-btn {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            font-size: 14px;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            flex: 1;
+            transition: background 0.2s;
+        }
+        .pdf-btn:hover {
+            background: #c82333;
+        }
+        .print-btn {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            font-size: 14px;
+            font-weight: bold;
+            border-radius: 6px;
+            cursor: pointer;
+            flex: 1;
+            transition: background 0.2s;
+        }
+        .print-btn:hover {
+            background: #218838;
+        }
+
+        /* Arkusz A4 */
+        .page {
+            width: 210mm;
+            height: 295mm;
+            display: grid;
+            grid-template-columns: 105mm 105mm;
+            grid-template-rows: 147.5mm 147.5mm;
+            box-sizing: border-box;
+            background: #fff;
+            margin: 0 auto;
+            box-shadow: 0 0 15px rgba(0,0,0,0.15);
+            overflow: hidden;
+        }
+        
+        .quadrant {
+            box-sizing: border-box;
+            padding: 6mm;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            border: 1px dashed #888;
+        }
+
+        .label-box.hidden {
+            display: none !important;
+        }
+
+        .label-box {
+            border: 2px solid #000;
+            padding: 8px;
+            height: 100%;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start; 
+            background: #fff;
+            gap: 15px;
+        }
+        .label-header {
+            text-align: center;
+            font-weight: bold;
+            font-size: 13px;
+            border-bottom: 2px solid #000;
+            padding-bottom: 5px;
+            margin-bottom: 6px;
+        }
+
+        .carrier-box {
+            font-size: 11px;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+        .carrier-box.hidden {
+            display: none !important;
+        }
+        .carrier-line {
+            border-bottom: 1.5px solid #000;
+            height: 20px;
+            margin-top: 2px;
+            font-weight: normal;
+            font-size: 12px;
+            padding-left: 2px;
+        }
+
+        .qr-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 4px 0;
+        }
+        .qr-box {
+            width: 110px;
+            height: 110px;
+            border: 1.5px dashed #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #fff;
+            padding: 4px;
+            box-sizing: border-box;
+        }
+        .qr-box img {
+            display: block;
+            width: 100% !important;
+            height: 100% !important;
+        }
+
+        .manual-input-box {
+            border: 2px dashed #000;
+            padding: 8px;
+            text-align: center;
+            background: #fafafa;
+        }
+        .manual-input-box .title {
+            font-size: 10px;
+            font-weight: bold;
+            margin-bottom: 6px;
+        }
+        .manual-input-box .line {
+            border-bottom: 2px solid #000;
+            height: 22px;
+            margin-top: 4px;
+            font-size: 14px;
+            font-weight: bold;
+            line-height: 18px;
+        }
+
+        /* Reguły podczas bezpośredniego drukowania */
+        @media print {
+            body {
+                background: none;
+            }
+            .control-panel {
+                display: none !important;
+            }
+            .page {
+                box-shadow: none;
+                margin: 0;
+                height: 297mm;
+            }
+            .quadrant {
+                border: 1px dashed #888 !important;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- PANEL STEROWANIA -->
+    <div class="control-panel" id="control-panel">
+        <h2>Generator Etykiet QR (Druk / PDF)</h2>
+        <p style="font-size: 12px; color: #666; margin-bottom: 15px;">Po lewej wpisujesz dane do kodu QR, a po prawej tekstowy kod nadania na dół etykiety.</p>
+        
+        <div id="inputs-container"></div>
+
+        <div class="actions-row">
+            <button class="add-btn" id="add-label-btn" onclick="addLabel()">➕ Dodaj etykietę</button>
+            <button class="print-btn" onclick="window.print()">🖨️ Drukuj</button>
+            <button class="pdf-btn" onclick="generatePDF()">📄 Pobierz jako PDF</button>
+        </div>
+    </div>
+
+    <!-- ARKUSZ A4 (Zdefiniowany na sztywno, idealny dla GitHub Pages) -->
+    <div class="page" id="sheet-page">
+        <!-- Ćwiartka 1 -->
+        <div class="quadrant" id="quadrant-1">
+            <div class="label-box hidden" id="label-box-1">
+                <div>
+                    <div class="label-header">ZWROT TOWARU</div>
+                    <div class="carrier-box" id="preview-carrier-box-1">
+                        Przewoźnik:
+                        <div class="carrier-line" id="preview-carrier-1"></div>
+                    </div>
+                    <div class="qr-container" id="qr-container-1">
+                        <div class="qr-box" id="qrcode-1"></div>
+                    </div>
+                </div>
+                <div class="manual-input-box">
+                    <div class="title">KOD NADANIA:</div>
+                    <div class="line" id="preview-code-1"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Ćwiartka 2 -->
+        <div class="quadrant" id="quadrant-2">
+            <div class="label-box hidden" id="label-box-2">
+                <div>
+                    <div class="label-header">ZWROT TOWARU</div>
+                    <div class="carrier-box" id="preview-carrier-box-2">
+                        Przewoźnik:
+                        <div class="carrier-line" id="preview-carrier-2"></div>
+                    </div>
+                    <div class="qr-container" id="qr-container-2">
+                        <div class="qr-box" id="qrcode-2"></div>
+                    </div>
+                </div>
+                <div class="manual-input-box">
+                    <div class="title">KOD NADANIA:</div>
+                    <div class="line" id="preview-code-2"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Ćwiartka 3 -->
+        <div class="quadrant" id="quadrant-3">
+            <div class="label-box hidden" id="label-box-3">
+                <div>
+                    <div class="label-header">ZWROT TOWARU</div>
+                    <div class="carrier-box" id="preview-carrier-box-3">
+                        Przewoźnik:
+                        <div class="carrier-line" id="preview-carrier-3"></div>
+                    </div>
+                    <div class="qr-container" id="qr-container-3">
+                        <div class="qr-box" id="qrcode-3"></div>
+                    </div>
+                </div>
+                <div class="manual-input-box">
+                    <div class="title">KOD NADANIA:</div>
+                    <div class="line" id="preview-code-3"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Ćwiartka 4 -->
+        <div class="quadrant" id="quadrant-4">
+            <div class="label-box hidden" id="label-box-4">
+                <div>
+                    <div class="label-header">ZWROT TOWARU</div>
+                    <div class="carrier-box" id="preview-carrier-box-4">
+                        Przewoźnik:
+                        <div class="carrier-line" id="preview-carrier-4"></div>
+                    </div>
+                    <div class="qr-container" id="qr-container-4">
+                        <div class="qr-box" id="qrcode-4"></div>
+                    </div>
+                </div>
+                <div class="manual-input-box">
+                    <div class="title">KOD NADANIA:</div>
+                    <div class="line" id="preview-code-4"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SKRYPT -->
+    <script>
+        const carriersList = [
+            "InPost",
+            "DPD",
+            "DHL",
+            "GLS",
+            "Poczta Polska",
+            "UPS",
+            "FedEx",
+            "Inny"
+        ];
+
+        let activeCount = 0;
+        const maxLabels = 4;
+
+        function addLabel() {
+            if (activeCount >= maxLabels) return;
+            activeCount++;
+            
+            const i = activeCount;
+            const container = document.getElementById('inputs-container');
+            
+            let optionsHtml = '<option value="">-- Wybierz przewoźnika --</option>';
+            carriersList.forEach(c => {
+                optionsHtml += `<option value="${c}">${c}</option>`;
+            });
+
+            const group = document.createElement('div');
+            group.className = 'label-input-group';
+            group.id = `input-group-${i}`;
+            
+            let removeBtnHtml = (i > 1) ? `<button class="remove-btn" onclick="removeLabel(${i})">Usuń</button>` : '';
+
+            group.innerHTML = `
+                <h3>Etykieta ${i}</h3>
+                ${removeBtnHtml}
+                <div class="checkbox-container">
+                    <input type="checkbox" id="toggle-carrier-${i}" checked onchange="toggleCarrier(${i})">
+                    <label for="toggle-carrier-${i}">Pokaż pole przewoźnika</label>
+                </div>
+                <div class="input-row" id="carrier-row-${i}">
+                    <select id="input-carrier-select-${i}" onchange="handleCarrierChange(${i})">
+                        ${optionsHtml}
+                    </select>
+                    <input type="text" id="input-carrier-custom-${i}" placeholder="Wpisz własnego przewoźnika..." style="display: none;" oninput="updateLabel(${i})">
+                </div>
+                <div class="input-row">
+                    <input type="text" id="input-qr-${i}" placeholder="Kod QR (opcjonalnie)" oninput="updateLabel(${i})">
+                    <input type="text" id="input-code-${i}" placeholder="Kod nadania na dół (tekst)" oninput="updateLabel(${i})">
+                </div>
+            `;
+            container.appendChild(group);
+
+            document.getElementById(`label-box-${i}`).classList.remove('hidden');
+
+            if (activeCount >= maxLabels) {
+                document.getElementById('add-label-btn').style.display = 'none';
+            }
+
+            updateLabel(i);
+        }
+
+        function toggleCarrier(i) {
+            const checkbox = document.getElementById(`toggle-carrier-${i}`);
+            const carrierRow = document.getElementById(`carrier-row-${i}`);
+            const carrierBox = document.getElementById(`preview-carrier-box-${i}`);
+
+            if (checkbox.checked) {
+                carrierRow.style.display = "flex";
+                carrierBox.classList.remove('hidden');
+            } else {
+                carrierRow.style.display = "none";
+                carrierBox.classList.add('hidden');
+            }
+            updateLabel(i);
+        }
+
+        function removeLabel(i) {
+            reorderLabels(i);
+        }
+
+        function reorderLabels(removedIndex) {
+            const container = document.getElementById('inputs-container');
+            const groups = container.getElementsByClassName('label-input-group');
+            
+            let data = [];
+            for (let idx = 0; idx < groups.length; idx++) {
+                let oldId = groups[idx].id.split('-')[2];
+                if (parseInt(oldId) !== removedIndex) {
+                    data.push({
+                        showCarrier: document.getElementById(`toggle-carrier-${oldId}`).checked,
+                        carrierSelect: document.getElementById(`input-carrier-select-${oldId}`).value,
+                        carrierCustom: document.getElementById(`input-carrier-custom-${oldId}`).value,
+                        qr: document.getElementById(`input-qr-${oldId}`).value,
+                        code: document.getElementById(`input-code-${oldId}`).value
+                    });
+                }
+            }
+
+            container.innerHTML = "";
+            for (let j = 1; j <= 4; j++) {
+                document.getElementById(`label-box-${j}`).classList.add('hidden');
+            }
+            activeCount = 0;
+
+            data.forEach(item => {
+                addLabel();
+                let cur = activeCount;
+                
+                const checkbox = document.getElementById(`toggle-carrier-${cur}`);
+                checkbox.checked = item.showCarrier;
+                toggleCarrier(cur);
+
+                document.getElementById(`input-carrier-select-${cur}`).value = item.carrierSelect;
+                handleCarrierChange(cur);
+                if (item.carrierSelect === "Inny") {
+                    document.getElementById(`input-carrier-custom-${cur}`).value = item.carrierCustom;
+                }
+                document.getElementById(`input-qr-${cur}`).value = item.qr;
+                document.getElementById(`input-code-${cur}`).value = item.code;
+                updateLabel(cur);
+            });
+
+            if (activeCount === 0) {
+                addLabel();
+            }
+
+            document.getElementById('add-label-btn').style.display = 'block';
+        }
+
+        function handleCarrierChange(i) {
+            const selectElem = document.getElementById(`input-carrier-select-${i}`);
+            const customInput = document.getElementById(`input-carrier-custom-${i}`);
+            
+            if (selectElem.value === "Inny") {
+                customInput.style.display = "block";
+            } else {
+                customInput.style.display = "none";
+                customInput.value = "";
+            }
+            updateLabel(i);
+        }
+
+        function updateLabel(i) {
+            const checkbox = document.getElementById(`toggle-carrier-${i}`);
+            const selectElem = document.getElementById(`input-carrier-select-${i}`);
+            const customInput = document.getElementById(`input-carrier-custom-${i}`);
+            
+            let carrierVal = "";
+            if (checkbox && checkbox.checked) {
+                if (selectElem && selectElem.value === "Inny") {
+                    carrierVal = customInput.value;
+                } else if (selectElem) {
+                    carrierVal = selectElem.value;
+                }
+            }
+
+            const qrInput = document.getElementById(`input-qr-${i}`);
+            const codeInput = document.getElementById(`input-code-${i}`);
+            
+            const qrVal = qrInput ? qrInput.value : "";
+            const codeVal = codeInput ? codeInput.value : "";
+
+            document.getElementById(`preview-carrier-${i}`).innerText = carrierVal;
+            document.getElementById(`preview-code-${i}`).innerText = codeVal;
+
+            const qrBox = document.getElementById(`qrcode-${i}`);
+            const qrContainer = document.getElementById(`qr-container-${i}`);
+            qrBox.innerHTML = "";
+            
+            if (!qrVal || qrVal.trim() === "") {
+                qrBox.style.display = "none";
+                qrContainer.style.display = "none";
+            } else {
+                qrBox.style.display = "flex";
+                qrContainer.style.display = "flex";
+                new QRCode(qrBox, {
+                    text: qrVal,
+                    width: 300,
+                    height: 300
+                });
+            }
+        }
+
+        // Funkcja generująca plik PDF
+        function generatePDF() {
+            const element = document.getElementById('sheet-page');
+            
+            const options = {
+                margin:       0,
+                filename:     'etykiety-a4.pdf',
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2, useCORS: true, logging: false },
+                jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait', putOnlyUsedFonts: true }
+            };
+
+            html2pdf().from(element).set(options).save();
+        }
+
+        window.onload = function() {
+            addLabel();
+            document.getElementById('input-carrier-select-1').value = "InPost";
+            handleCarrierChange(1);
+            document.getElementById('input-qr-1').value = "";
+            document.getElementById('input-code-1').value = "";
+            updateLabel(1);
+        };
+    </script>
+</body>
+</html>
