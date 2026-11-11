@@ -171,7 +171,7 @@
             flex-direction: column;
             justify-content: flex-start; 
             background: #fff;
-            gap: 15px;
+            gap: 10px;
         }
         .label-header {
             text-align: center;
@@ -179,20 +179,35 @@
             font-size: 13px;
             border-bottom: 2px solid #000;
             padding-bottom: 5px;
-            margin-bottom: 6px;
+            margin-bottom: 4px;
         }
 
         .carrier-box {
             font-size: 11px;
             font-weight: bold;
-            margin-bottom: 8px;
+            margin-bottom: 4px;
         }
         .carrier-box.hidden {
             display: none !important;
         }
         .carrier-line {
             border-bottom: 1.5px solid #000;
-            height: 20px;
+            height: 18px;
+            margin-top: 2px;
+            font-weight: normal;
+            font-size: 12px;
+            padding-left: 2px;
+        }
+
+        /* Styl dla numeru zwrotu pod przewoźnikiem */
+        .return-box {
+            font-size: 11px;
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+        .return-line {
+            border-bottom: 1.5px solid #000;
+            height: 18px;
             margin-top: 2px;
             font-weight: normal;
             font-size: 12px;
@@ -203,7 +218,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            margin: 4px 0;
+            margin: 2px 0;
         }
         .qr-box {
             width: 110px;
@@ -224,22 +239,22 @@
 
         .manual-input-box {
             border: 2px dashed #000;
-            padding: 8px;
+            padding: 6px;
             text-align: center;
             background: #fafafa;
         }
         .manual-input-box .title {
             font-size: 10px;
             font-weight: bold;
-            margin-bottom: 6px;
+            margin-bottom: 4px;
         }
         .manual-input-box .line {
             border-bottom: 2px solid #000;
-            height: 22px;
-            margin-top: 4px;
-            font-size: 14px;
+            height: 20px;
+            margin-top: 2px;
+            font-size: 13px;
             font-weight: bold;
-            line-height: 18px;
+            line-height: 16px;
         }
 
         /* Reguły podczas bezpośredniego drukowania */
@@ -266,7 +281,7 @@
     <!-- PANEL STEROWANIA -->
     <div class="control-panel" id="control-panel">
         <h2>Generator Etykiet QR (Druk / PDF)</h2>
-        <p style="font-size: 12px; color: #666; margin-bottom: 15px;">Po lewej wpisujesz dane do kodu QR, a po prawej tekstowy kod nadania na dół etykiety.</p>
+        <p style="font-size: 12px; color: #666; margin-bottom: 15px;">Wpisz dane przewoźnika, numer zwrotu, kod QR oraz kod nadania.</p>
         
         <div id="inputs-container"></div>
 
@@ -277,7 +292,7 @@
         </div>
     </div>
 
-    <!-- ARKUSZ A4 (Zdefiniowany na sztywno, idealny dla GitHub Pages) -->
+    <!-- ARKUSZ A4 -->
     <div class="page" id="sheet-page">
         <!-- Ćwiartka 1 -->
         <div class="quadrant" id="quadrant-1">
@@ -287,6 +302,10 @@
                     <div class="carrier-box" id="preview-carrier-box-1">
                         Przewoźnik:
                         <div class="carrier-line" id="preview-carrier-1"></div>
+                    </div>
+                    <div class="return-box">
+                        Numer zwrotu:
+                        <div class="return-line" id="preview-return-1"></div>
                     </div>
                     <div class="qr-container" id="qr-container-1">
                         <div class="qr-box" id="qrcode-1"></div>
@@ -308,6 +327,10 @@
                         Przewoźnik:
                         <div class="carrier-line" id="preview-carrier-2"></div>
                     </div>
+                    <div class="return-box">
+                        Numer zwrotu:
+                        <div class="return-line" id="preview-return-2"></div>
+                    </div>
                     <div class="qr-container" id="qr-container-2">
                         <div class="qr-box" id="qrcode-2"></div>
                     </div>
@@ -328,6 +351,10 @@
                         Przewoźnik:
                         <div class="carrier-line" id="preview-carrier-3"></div>
                     </div>
+                    <div class="return-box">
+                        Numer zwrotu:
+                        <div class="return-line" id="preview-return-3"></div>
+                    </div>
                     <div class="qr-container" id="qr-container-3">
                         <div class="qr-box" id="qrcode-3"></div>
                     </div>
@@ -347,6 +374,10 @@
                     <div class="carrier-box" id="preview-carrier-box-4">
                         Przewoźnik:
                         <div class="carrier-line" id="preview-carrier-4"></div>
+                    </div>
+                    <div class="return-box">
+                        Numer zwrotu:
+                        <div class="return-line" id="preview-return-4"></div>
                     </div>
                     <div class="qr-container" id="qr-container-4">
                         <div class="qr-box" id="qrcode-4"></div>
@@ -408,6 +439,9 @@
                     <input type="text" id="input-carrier-custom-${i}" placeholder="Wpisz własnego przewoźnika..." style="display: none;" oninput="updateLabel(${i})">
                 </div>
                 <div class="input-row">
+                    <input type="text" id="input-return-${i}" placeholder="Numer zwrotu (tekst)" oninput="updateLabel(${i})">
+                </div>
+                <div class="input-row">
                     <input type="text" id="input-qr-${i}" placeholder="Kod QR (opcjonalnie)" oninput="updateLabel(${i})">
                     <input type="text" id="input-code-${i}" placeholder="Kod nadania na dół (tekst)" oninput="updateLabel(${i})">
                 </div>
@@ -454,6 +488,7 @@
                         showCarrier: document.getElementById(`toggle-carrier-${oldId}`).checked,
                         carrierSelect: document.getElementById(`input-carrier-select-${oldId}`).value,
                         carrierCustom: document.getElementById(`input-carrier-custom-${oldId}`).value,
+                        returnVal: document.getElementById(`input-return-${oldId}`).value,
                         qr: document.getElementById(`input-qr-${oldId}`).value,
                         code: document.getElementById(`input-code-${oldId}`).value
                     });
@@ -479,6 +514,7 @@
                 if (item.carrierSelect === "Inny") {
                     document.getElementById(`input-carrier-custom-${cur}`).value = item.carrierCustom;
                 }
+                document.getElementById(`input-return-${cur}`).value = item.returnVal;
                 document.getElementById(`input-qr-${cur}`).value = item.qr;
                 document.getElementById(`input-code-${cur}`).value = item.code;
                 updateLabel(cur);
@@ -518,13 +554,16 @@
                 }
             }
 
+            const returnInput = document.getElementById(`input-return-${i}`);
             const qrInput = document.getElementById(`input-qr-${i}`);
             const codeInput = document.getElementById(`input-code-${i}`);
             
+            const returnVal = returnInput ? returnInput.value : "";
             const qrVal = qrInput ? qrInput.value : "";
             const codeVal = codeInput ? codeInput.value : "";
 
             document.getElementById(`preview-carrier-${i}`).innerText = carrierVal;
+            document.getElementById(`preview-return-${i}`).innerText = returnVal;
             document.getElementById(`preview-code-${i}`).innerText = codeVal;
 
             const qrBox = document.getElementById(`qrcode-${i}`);
@@ -564,6 +603,7 @@
             addLabel();
             document.getElementById('input-carrier-select-1').value = "InPost";
             handleCarrierChange(1);
+            document.getElementById('input-return-1').value = "";
             document.getElementById('input-qr-1').value = "";
             document.getElementById('input-code-1').value = "";
             updateLabel(1);
