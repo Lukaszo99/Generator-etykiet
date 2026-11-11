@@ -199,11 +199,14 @@
             padding-left: 2px;
         }
 
-        /* Styl dla numeru zwrotu pod przewoźnikiem */
+        /* Styl dla numeru zwrotu */
         .return-box {
             font-size: 11px;
             font-weight: bold;
             margin-bottom: 4px;
+        }
+        .return-box.hidden {
+            display: none !important;
         }
         .return-line {
             border-bottom: 1.5px solid #000;
@@ -281,7 +284,7 @@
     <!-- PANEL STEROWANIA -->
     <div class="control-panel" id="control-panel">
         <h2>Generator Etykiet QR (Druk / PDF)</h2>
-        <p style="font-size: 12px; color: #666; margin-bottom: 15px;">Wpisz dane przewoźnika, numer zwrotu, kod QR oraz kod nadania.</p>
+        <p style="font-size: 12px; color: #666; margin-bottom: 15px;">Wypełnij etykiety. Pola przewoźnika i numeru zwrotu możesz włączać lub wyłączać.</p>
         
         <div id="inputs-container"></div>
 
@@ -303,7 +306,7 @@
                         Przewoźnik:
                         <div class="carrier-line" id="preview-carrier-1"></div>
                     </div>
-                    <div class="return-box">
+                    <div class="return-box" id="preview-return-box-1">
                         Numer zwrotu:
                         <div class="return-line" id="preview-return-1"></div>
                     </div>
@@ -327,7 +330,7 @@
                         Przewoźnik:
                         <div class="carrier-line" id="preview-carrier-2"></div>
                     </div>
-                    <div class="return-box">
+                    <div class="return-box" id="preview-return-box-2">
                         Numer zwrotu:
                         <div class="return-line" id="preview-return-2"></div>
                     </div>
@@ -351,7 +354,7 @@
                         Przewoźnik:
                         <div class="carrier-line" id="preview-carrier-3"></div>
                     </div>
-                    <div class="return-box">
+                    <div class="return-box" id="preview-return-box-3">
                         Numer zwrotu:
                         <div class="return-line" id="preview-return-3"></div>
                     </div>
@@ -375,7 +378,7 @@
                         Przewoźnik:
                         <div class="carrier-line" id="preview-carrier-4"></div>
                     </div>
-                    <div class="return-box">
+                    <div class="return-box" id="preview-return-box-4">
                         Numer zwrotu:
                         <div class="return-line" id="preview-return-4"></div>
                     </div>
@@ -438,7 +441,11 @@
                     </select>
                     <input type="text" id="input-carrier-custom-${i}" placeholder="Wpisz własnego przewoźnika..." style="display: none;" oninput="updateLabel(${i})">
                 </div>
-                <div class="input-row">
+                <div class="checkbox-container">
+                    <input type="checkbox" id="toggle-return-${i}" checked onchange="toggleReturn(${i})">
+                    <label for="toggle-return-${i}">Pokaż numer zwrotu</label>
+                </div>
+                <div class="input-row" id="return-row-${i}">
                     <input type="text" id="input-return-${i}" placeholder="Numer zwrotu (tekst)" oninput="updateLabel(${i})">
                 </div>
                 <div class="input-row">
@@ -472,6 +479,21 @@
             updateLabel(i);
         }
 
+        function toggleReturn(i) {
+            const checkbox = document.getElementById(`toggle-return-${i}`);
+            const returnRow = document.getElementById(`return-row-${i}`);
+            const returnBox = document.getElementById(`preview-return-box-${i}`);
+
+            if (checkbox.checked) {
+                returnRow.style.display = "flex";
+                returnBox.classList.remove('hidden');
+            } else {
+                returnRow.style.display = "none";
+                returnBox.classList.add('hidden');
+            }
+            updateLabel(i);
+        }
+
         function removeLabel(i) {
             reorderLabels(i);
         }
@@ -488,6 +510,7 @@
                         showCarrier: document.getElementById(`toggle-carrier-${oldId}`).checked,
                         carrierSelect: document.getElementById(`input-carrier-select-${oldId}`).value,
                         carrierCustom: document.getElementById(`input-carrier-custom-${oldId}`).value,
+                        showReturn: document.getElementById(`toggle-return-${oldId}`).checked,
                         returnVal: document.getElementById(`input-return-${oldId}`).value,
                         qr: document.getElementById(`input-qr-${oldId}`).value,
                         code: document.getElementById(`input-code-${oldId}`).value
@@ -505,8 +528,8 @@
                 addLabel();
                 let cur = activeCount;
                 
-                const checkbox = document.getElementById(`toggle-carrier-${cur}`);
-                checkbox.checked = item.showCarrier;
+                const checkboxCarrier = document.getElementById(`toggle-carrier-${cur}`);
+                checkboxCarrier.checked = item.showCarrier;
                 toggleCarrier(cur);
 
                 document.getElementById(`input-carrier-select-${cur}`).value = item.carrierSelect;
@@ -514,6 +537,11 @@
                 if (item.carrierSelect === "Inny") {
                     document.getElementById(`input-carrier-custom-${cur}`).value = item.carrierCustom;
                 }
+
+                const checkboxReturn = document.getElementById(`toggle-return-${cur}`);
+                checkboxReturn.checked = item.showReturn;
+                toggleReturn(cur);
+
                 document.getElementById(`input-return-${cur}`).value = item.returnVal;
                 document.getElementById(`input-qr-${cur}`).value = item.qr;
                 document.getElementById(`input-code-${cur}`).value = item.code;
@@ -541,12 +569,12 @@
         }
 
         function updateLabel(i) {
-            const checkbox = document.getElementById(`toggle-carrier-${i}`);
+            const checkboxCarrier = document.getElementById(`toggle-carrier-${i}`);
             const selectElem = document.getElementById(`input-carrier-select-${i}`);
             const customInput = document.getElementById(`input-carrier-custom-${i}`);
             
             let carrierVal = "";
-            if (checkbox && checkbox.checked) {
+            if (checkboxCarrier && checkboxCarrier.checked) {
                 if (selectElem && selectElem.value === "Inny") {
                     carrierVal = customInput.value;
                 } else if (selectElem) {
@@ -554,11 +582,16 @@
                 }
             }
 
+            const checkboxReturn = document.getElementById(`toggle-return-${i}`);
             const returnInput = document.getElementById(`input-return-${i}`);
+            let returnVal = "";
+            if (checkboxReturn && checkboxReturn.checked) {
+                returnVal = returnInput ? returnInput.value : "";
+            }
+
             const qrInput = document.getElementById(`input-qr-${i}`);
             const codeInput = document.getElementById(`input-code-${i}`);
             
-            const returnVal = returnInput ? returnInput.value : "";
             const qrVal = qrInput ? qrInput.value : "";
             const codeVal = codeInput ? codeInput.value : "";
 
